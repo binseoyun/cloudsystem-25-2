@@ -1,14 +1,14 @@
 import { User, Timetable } from '../App';
-import { TimetableView } from './TimetableView';
+import { TimetableView } from './TimetableView'; // 경로 수정
 import { useState } from 'react';
-import { User as UserIcon, Calendar, Heart, Clock, Mail, BookOpen } from 'lucide-react';
-import { mockCourses } from '../data/mockData';
+import { User as UserIcon, Calendar, Heart, Clock, BookOpen } from 'lucide-react';
+import { mockCourses } from '../data/mockData'; // 경로 수정
 
 type MyPageProps = {
   user: User;
   savedTimetables: Timetable[];
   interestedCourses: string[];
-};
+}
 
 export function MyPage({ user, savedTimetables, interestedCourses }: MyPageProps) {
   const [selectedTimetable, setSelectedTimetable] = useState<Timetable | null>(null);
@@ -17,6 +17,7 @@ export function MyPage({ user, savedTimetables, interestedCourses }: MyPageProps
     interestedCourses.includes(c.id)
   );
 
+  // 현재 저장된 시간표 중 첫 번째 시간표의 총 학점을 계산 (대표 학점)
   const totalCredits = savedTimetables[0]?.courses.reduce((sum, c) => sum + c.credits, 0) || 0;
 
   return (
@@ -26,70 +27,78 @@ export function MyPage({ user, savedTimetables, interestedCourses }: MyPageProps
         <p className="text-gray-600">내 정보와 수강신청 기록을 확인하세요</p>
       </div>
 
-      {/* User Info Card */}
+      {/* User Info Card (이름, 학과, 학번, 이번 학기 학점 표시) */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-lg p-8 text-white">
-        <div className="flex items-center space-x-4 mb-6">
-          <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center">
-            <UserIcon className="w-10 h-10 text-blue-600" />
-          </div>
-          <div>
-            <h3 className="mb-1">{user.name}</h3>
-            <p className="text-blue-100">{user.department}</p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-8 mb-6">
+          <div className="flex items-center space-x-4">
+            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center flex-shrink-0">
+              <UserIcon className="w-10 h-10 text-blue-600" />
+            </div>
+            <div>
+              {/* 이름과 학과 표시 */}
+              <h3 className="mb-1 text-2xl font-bold">{user.name} 학생</h3>
+              <p className="text-blue-100 text-lg">{user.department}</p>
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white/10 rounded-lg p-4">
-            <div className="flex items-center space-x-2 mb-2">
-              <Mail className="w-4 h-4" />
-              <span className="text-blue-100">이메일</span>
-            </div>
-            <p>{user.email}</p>
-          </div>
+        {/* 핵심 정보 요약 (학번, 이번 학기) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 border-t border-white/20 pt-4 mt-4">
+          
           <div className="bg-white/10 rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-2">
               <BookOpen className="w-4 h-4" />
               <span className="text-blue-100">학번</span>
             </div>
-            <p>{user.studentId}</p>
+            <p className="text-xl font-semibold">{user.studentId}</p>
           </div>
+          
           <div className="bg-white/10 rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-2">
               <Calendar className="w-4 h-4" />
-              <span className="text-blue-100">이번 학기</span>
+              <span className="text-blue-100">이번 학기 신청</span>
             </div>
-            <p>{totalCredits}학점 신청</p>
+            <p className="text-xl font-semibold">{totalCredits}학점</p>
+          </div>
+
+          {/* 빈 공간 처리를 위한 더미 */}
+          <div className="hidden lg:block bg-white/10 rounded-lg p-4 opacity-50">
+            <div className="flex items-center space-x-2 mb-2">
+              <Clock className="w-4 h-4" />
+              <span className="text-blue-100">총 강의 수</span>
+            </div>
+            <p className="text-xl font-semibold">{savedTimetables[0]?.courses.length || 0}개</p>
           </div>
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats (아래 부분은 기존 코드 유지) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between mb-4">
             <Calendar className="w-8 h-8 text-blue-600" />
-            <span className="text-blue-600">{savedTimetables.length}</span>
+            <span className="text-blue-600 font-bold">{savedTimetables.length}</span>
           </div>
           <h4 className="text-gray-900">저장된 시간표</h4>
-          <p className="text-gray-600">생성한 시간표 개수</p>
+          <p className="text-gray-600 text-sm">생성한 시간표 개수</p>
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between mb-4">
             <Heart className="w-8 h-8 text-red-600" />
-            <span className="text-red-600">{interestedCourses.length}</span>
+            <span className="text-red-600 font-bold">{interestedCourses.length}</span>
           </div>
           <h4 className="text-gray-900">관심 과목</h4>
-          <p className="text-gray-600">등록한 희망 과목</p>
+          <p className="text-gray-600 text-sm">등록한 희망 과목</p>
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between mb-4">
             <Clock className="w-8 h-8 text-green-600" />
-            <span className="text-green-600">{totalCredits}</span>
+            <span className="text-green-600 font-bold">{totalCredits}</span>
           </div>
           <h4 className="text-gray-900">신청 학점</h4>
-          <p className="text-gray-600">현재 시간표 학점</p>
+          <p className="text-gray-600 text-sm">현재 시간표 학점</p>
         </div>
       </div>
 
@@ -110,7 +119,7 @@ export function MyPage({ user, savedTimetables, interestedCourses }: MyPageProps
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <h4 className="text-gray-900">{timetable.name}</h4>
-                    <p className="text-gray-600">
+                    <p className="text-gray-600 text-sm">
                       {timetable.courses.length}과목 · {timetable.courses.reduce((sum, c) => sum + c.credits, 0)}학점 · 
                       {' '}{new Date(timetable.createdAt).toLocaleDateString('ko-KR')}
                     </p>
@@ -119,7 +128,7 @@ export function MyPage({ user, savedTimetables, interestedCourses }: MyPageProps
                     onClick={() => setSelectedTimetable(
                       selectedTimetable?.id === timetable.id ? null : timetable
                     )}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
                   >
                     {selectedTimetable?.id === timetable.id ? '접기' : '보기'}
                   </button>
@@ -151,7 +160,7 @@ export function MyPage({ user, savedTimetables, interestedCourses }: MyPageProps
             {interestedCourseDetails.map(course => (
               <div key={course.id} className="border border-gray-200 rounded-lg p-4">
                 <h4 className="text-gray-900 mb-2">{course.name}</h4>
-                <div className="space-y-1 text-gray-600">
+                <div className="space-y-1 text-gray-600 text-sm">
                   <p>교수: {course.professor}</p>
                   <p>학점: {course.credits}학점</p>
                   <p>시간: {course.day.join(', ')} {course.time}</p>
@@ -162,34 +171,7 @@ export function MyPage({ user, savedTimetables, interestedCourses }: MyPageProps
           </div>
         )}
       </div>
-
-      {/* History Section */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-gray-900 mb-4">수강신청 히스토리</h3>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between py-3 border-b border-gray-200">
-            <div>
-              <p className="text-gray-900">2025-1학기 수강신청</p>
-              <p className="text-gray-600">18학점 · 6과목</p>
-            </div>
-            <span className="px-3 py-1 bg-green-100 text-green-700 rounded">완료</span>
-          </div>
-          <div className="flex items-center justify-between py-3 border-b border-gray-200">
-            <div>
-              <p className="text-gray-900">2024-2학기 수강신청</p>
-              <p className="text-gray-600">15학점 · 5과목</p>
-            </div>
-            <span className="px-3 py-1 bg-green-100 text-green-700 rounded">완료</span>
-          </div>
-          <div className="flex items-center justify-between py-3">
-            <div>
-              <p className="text-gray-900">2024-1학기 수강신청</p>
-              <p className="text-gray-600">18학점 · 6과목</p>
-            </div>
-            <span className="px-3 py-1 bg-green-100 text-green-700 rounded">완료</span>
-          </div>
-        </div>
-      </div>
+      
     </div>
   );
 }
