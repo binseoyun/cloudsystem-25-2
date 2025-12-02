@@ -9,6 +9,7 @@ type CourseListProps = {
 };
 
 export function CourseList({ courses, interestedCourses, onToggleInterest }: CourseListProps) {
+  const COURSES_ENDPOINT = 'http://localhost:8000/api/courses';
   const [courseData, setCourseData] = useState<Course[]>(courses);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +30,7 @@ export function CourseList({ courses, interestedCourses, onToggleInterest }: Cou
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch('http://localhost:3000/api/courses');
+        const res = await fetch(COURSES_ENDPOINT);
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
         }

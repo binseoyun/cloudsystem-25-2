@@ -117,7 +117,7 @@ export default function App() {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch('http://localhost:3000/api/courses');
+        const response = await fetch('http://localhost:8000/api/courses');
         if (!response.ok) {
           throw new Error('수업 데이터를 불러올 수 없습니다');
         }

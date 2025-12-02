@@ -1,10 +1,19 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { LoginPage } from './components/LoginPage';
 import { HomePage } from './components/HomePage';
 import { TimetableGenerator } from './components/TimetableGenerator';
 import { CourseList } from './components/CourseList';
 import { AIRecommendation } from './components/AIRecommendation';
 import { MyPage } from './components/MyPage';
+
+export type ClassSchedule = {
+  class_id: string;
+  weekday: number;
+  start_time: string;
+  end_time: string | null;
+  duration_minutes: number | null;
+  location: string | null;
+};
 
 export type Course = {
   id: string;
@@ -17,7 +26,8 @@ export type Course = {
   capacity: number;
   enrolled: number;
   department: string;
-  courseType: '전공 필수' | '전공 선택' | '교양';
+  courseType: '전공필수' | '전공선택' | '교양';
+  schedules?: ClassSchedule[];
 };
 
 export type Timetable = {
@@ -37,11 +47,103 @@ export type User = {
 
 export type Page = 'login' | 'home' | 'timetable' | 'courses' | 'ai' | 'mypage';
 
+const API_BASE_URL = 'http://localhost:8000';
+
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('login');
   const [user, setUser] = useState<User | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState(false);
+  const [coursesError, setCoursesError] = useState<string | null>(null);
   const [savedTimetables, setSavedTimetables] = useState<Timetable[]>([]);
   const [interestedCourses, setInterestedCourses] = useState<string[]>([]);
+
+  const normalizeCourses = (data: any[]): Course[] => {
+    const weekdayMap = ['일', '월', '화', '수', '목', '금', '토'];
+
+    return data.map((course, index) => {
+      const rawId = course.id ?? course.code ?? `course-${index}`;
+      const schedules: ClassSchedule[] = Array.isArray(course.schedules)
+        ? course.schedules.map((schedule: any) => ({
+            class_id: String(schedule.class_id ?? rawId),
+            weekday: schedule.weekday ?? 0,
+            start_time: schedule.start_time ?? '',
+            end_time: schedule.end_time ?? null,
+            duration_minutes: schedule.duration_minutes ?? null,
+            location: schedule.location ?? null,
+          }))
+        : [];
+
+      const day =
+        course.day && Array.isArray(course.day) && course.day.length > 0
+          ? course.day
+          : Array.from(
+              new Set(
+                schedules
+                  .map((schedule) => weekdayMap[schedule.weekday])
+                  .filter(Boolean)
+              )
+            );
+
+      const time =
+        course.time ||
+        (schedules.length > 0
+          ? schedules
+              .map((schedule) => {
+                const start = schedule.start_time?.slice(0, 5) ?? '';
+                const end = schedule.end_time?.slice(0, 5) ?? '';
+                return end ? `${start}~${end}` : start;
+              })
+              .join(', ')
+          : '시간 정보 없음');
+
+      const normalizedCourseType = (course.courseType ?? '').replace(/\s+/g, '');
+      const courseType: Course['courseType'] =
+        normalizedCourseType === '전공필수'
+          ? '전공필수'
+          : normalizedCourseType === '전공선택'
+          ? '전공선택'
+          : '교양';
+
+      return {
+        id: String(rawId),
+        code: course.code ?? String(rawId),
+        name: course.name ?? '미정',
+        professor: course.professor ?? '미정',
+        credits: Number(course.credits ?? 0),
+        time,
+        day,
+        capacity: Number(course.capacity ?? 0),
+        enrolled: Number(course.enrolled ?? 0),
+        department: course.department ?? '미정',
+        courseType,
+        schedules,
+      };
+    });
+  };
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        setCoursesLoading(true);
+        setCoursesError(null);
+        const response = await fetch(`${API_BASE_URL}/api/courses`);
+        if (!response.ok) {
+          throw new Error('수업 데이터를 불러올 수 없습니다.');
+        }
+        const data = await response.json();
+        setCourses(normalizeCourses(data));
+      } catch (err) {
+        setCoursesError(
+          err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.'
+        );
+      } finally {
+        setCoursesLoading(false);
+      }
+    };
+
+    fetchCourses();
+  }, []);
 
   // 🔹 처음 앱 켰을 때 한 번만 실행: 토큰 있으면 로그인 상태로 간주
   useEffect(() => {
@@ -126,11 +228,33 @@ export default function App() {
 
   // 🔹 관심 과목 토글
   const handleToggleInterest = (courseId: string) => {
-    setInterestedCourses((prev) =>
-      prev.includes(courseId)
+    setInterestedCourses((prev) => {
+      const isInterested = prev.includes(courseId);
+
+      setCourses((current) =>
+        current.map((course) => {
+          if (course.id !== courseId) return course;
+
+          const delta = isInterested ? -1 : 1;
+          const capacity = Number.isFinite(course.capacity)
+            ? course.capacity
+            : Number.POSITIVE_INFINITY;
+          const updatedEnrolled = Math.min(
+            capacity,
+            Math.max(0, course.enrolled + delta)
+          );
+
+          return {
+            ...course,
+            enrolled: updatedEnrolled,
+          };
+        })
+      );
+
+      return isInterested
         ? prev.filter((id) => id !== courseId)
-        : [...prev, courseId]
-    );
+        : [...prev, courseId];
+    });
   };
 
   // 🔹 savedTimetables 변경될 때마다 localStorage에도 반영 (로그인된 상태일 때만)
@@ -249,6 +373,9 @@ export default function App() {
         )}
         {currentPage === 'courses' && (
           <CourseList
+            courses={courses}
+            isLoading={coursesLoading}
+            error={coursesError}
             interestedCourses={interestedCourses}
             onToggleInterest={handleToggleInterest}
           />
