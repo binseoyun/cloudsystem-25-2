@@ -1,5 +1,5 @@
-//homepage.tsx
-import { Calendar, BookOpen, Sparkles, User, Clock, TrendingUp } from 'lucide-react';
+// homepage.tsx
+import { Calendar, BookOpen, Sparkles, User } from 'lucide-react';
 import { User as UserType, Page } from '../App';
 
 type HomePageProps = {
@@ -39,13 +39,6 @@ export function HomePage({ onNavigate, user }: HomePageProps) {
     },
   ];
 
-  const stats = [
-    { label: '전체 개설 과목', value: '247개', icon: BookOpen },
-    { label: '이번 학기 학점', value: '0학점', icon: TrendingUp },
-    { label: '저장된 시간표', value: '0개', icon: Calendar },
-    { label: '관심 과목', value: '0개', icon: Clock },
-  ];
-
   return (
     <div className="space-y-8">
       {/* Welcome Section */}
@@ -59,17 +52,14 @@ export function HomePage({ onNavigate, user }: HomePageProps) {
         </p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, index) => (
-          <div key={index} className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-2">
-              <stat.icon className="w-5 h-5 text-gray-400" />
-            </div>
-            <div className="text-gray-600">{stat.label}</div>
-            <div className="mt-1">{stat.value}</div>
-          </div>
-        ))}
+      {/* Quick Tips (위로 올림) */}
+      <div className="bg-yellow-50 border-l-4 border-yellow-400 p-6 rounded">
+        <h4 className="text-yellow-800 mb-2">💡 팁</h4>
+        <ul className="text-yellow-700 space-y-1">
+          <li>• 시간표 생성 전에 수업 목록에서 관심 과목을 먼저 등록해보세요</li>
+          <li>• AI 수업 추천으로 자신의 진로에 맞는 과목을 찾아보세요</li>
+          <li>• 여러 시간표를 저장해두고 비교해보세요</li>
+        </ul>
       </div>
 
       {/* Feature Cards */}
@@ -83,7 +73,9 @@ export function HomePage({ onNavigate, user }: HomePageProps) {
               className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-all text-left group"
             >
               <div className="flex items-start space-x-4">
-                <div className={`${feature.color} rounded-lg p-3 group-hover:scale-110 transition-transform`}>
+                <div
+                  className={`${feature.color} rounded-lg p-3 group-hover:scale-110 transition-transform`}
+                >
                   <feature.icon className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1">
@@ -94,16 +86,6 @@ export function HomePage({ onNavigate, user }: HomePageProps) {
             </button>
           ))}
         </div>
-      </div>
-
-      {/* Quick Tips */}
-      <div className="bg-yellow-50 border-l-4 border-yellow-400 p-6 rounded">
-        <h4 className="text-yellow-800 mb-2">💡 팁</h4>
-        <ul className="text-yellow-700 space-y-1">
-          <li>• 시간표 생성 전에 수업 목록에서 관심 과목을 먼저 등록해보세요</li>
-          <li>• AI 수업 추천으로 자신의 진로에 맞는 과목을 찾아보세요</li>
-          <li>• 여러 시간표를 저장해두고 비교해보세요</li>
-        </ul>
       </div>
     </div>
   );
