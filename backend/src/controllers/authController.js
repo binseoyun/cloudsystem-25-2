@@ -17,19 +17,29 @@ exports.register = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 12);
 
         //새로운 사용자 생성
-        await User.create({
+        const newUser= await User.create({
             studentId,
             password: hashedPassword,
             name,
             major
         });
-        res.status(201).json({ message: '회원가입이 완료되었습니다.'});
+        // 3. 회원가입 성공 시 바로 토큰 발급! 
+        const token = jwt.sign({ id: newUser.id }, process.env.JWT_SECRET || 'secret', { expiresIn: '1h' });
+        res.status(201).json({ message: '회원가입이 완료되었습니다.',
+            token,
+            user: {
+                name:newUser.name,
+                studentId:newUser.studentId,
+                major:newUser.major
+            }
+        });
     } catch (error){
         console.error('회원가입 오류:', error);
         res.status(500).json({ message: '서버 오류가 발생했습니다.'});
 
     }
     };
+    
 
     //2. 로그인 controller
 exports.login = async (req, res) => {
@@ -50,6 +60,27 @@ exports.login = async (req, res) => {
            //유저 DB ID인 user.id를 토큰에 담아줌
           const token = jwt.sign({ id:user.id}, process.env.JWT_SECRET, { expiresIn: '1h'});
               
+              res.status(200).json({ 
+                    message: '로그인 성공',
+                    token,
+                user:{name: user.name, studentId: user.studentId}
+             });
+        } catch (error){
+            console.error('로그인 오류:', error);
+            res.status(500).json({ message: '서버 오류가 발생했습니다.'});
+        }
+    };
+
+    //3. 로그아웃 controller
+    exports.logout = async (req, res) => {
+        try {
+            // 클라이언트 측에서 토큰을 삭제하도록 안내
+            res.status(200).json({ message: '로그아웃 성공' });
+        } catch (error) {
+            console.error('로그아웃 오류:', error);
+            res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+        }
+    };
          // DB의 'major' 컬럼을 프론트엔드 타입인 'department'로 매핑해서 보냄
         res.status(200).json({ 
             message: '로그인 성공',

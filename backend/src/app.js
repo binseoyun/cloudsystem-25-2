@@ -1,10 +1,15 @@
 const express = require('express');
+const cors= require('cors'); 
 const sequelize = require('./config/database'); // DB 연결 설정
 const User = require('./models/User'); // 모델 불러오기
 const authRoutes = require('./routes/authRoutes');
 
 const app = express();
+
+app.use(cors());
+
 app.use(express.json());
+
 
 //규칙 설정
 
@@ -13,7 +18,11 @@ app.use('/api/auth', authRoutes);
 
 
 
-
+//404 에러(라우터 콧찾는 에러 찾게 하려고)
+app.use((req,res,next)=>{
+ console.log(`[404 에러] 경로를 찾을 수 없음: ${req.url}`);
+  res.status(404).json({ message: `페이지를 찾을 수 없습니다: ${req.url}` });
+});
 
 //서버 실행 및 DB 동기화
 const PORT = process.env.PORT || 3000;
