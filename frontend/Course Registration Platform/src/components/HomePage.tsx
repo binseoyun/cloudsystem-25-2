@@ -1,3 +1,4 @@
+//homepage.tsx
 import { Calendar, BookOpen, Sparkles, User, Clock, TrendingUp } from 'lucide-react';
 import { User as UserType, Page } from '../App';
 

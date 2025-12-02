@@ -1,29 +1,34 @@
+// backend/src/app.js
 const express = require('express');
+const cors = require('cors');
 const sequelize = require('./config/database'); // DB 연결 설정
 const User = require('./models/User'); // 모델 불러오기
 const Class = require('./models/class'); // Class 모델 불러오기
 const ClassSchedule = require('./models/ClassSchedule');
 const authRoutes = require('./routes/authRoutes');
+require('dotenv').config();
 
 const app = express();
+
+// CORS 설정 (프론트 주소)
+app.use(cors({
+  origin: 'http://localhost:3000',
+}));
+
 app.use(express.json());
 
-// 개발 편의를 위한 간단한 CORS 허용 (로컬 개발용)
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-  if (req.method === 'OPTIONS') {
-    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE');
-    return res.sendStatus(200);
-  }
-  next();
-});
-
-//규칙 설정
-
-//api 경로 설정(회원가입, 로그인) /api/auth요청 => authRoutes로 연결
+// /api/auth → authRoutes
 app.use('/api/auth', authRoutes);
 
+// 404 처리
+app.use((req, res, next) => {
+  console.log(`[404 에러] 경로를 찾을 수 없음: ${req.url}`);
+  res.status(404).json({ message: `페이지를 찾을 수 없습니다: ${req.url}` });
+});
+
+
+// DB 동기화 후 서버 실행
+sequelize.sync({ force: false })
 //api 경로 설정(수업 목록) /api/courses요청 => 수업 조회 
 // 클래스와 스케줄 관계 설정
 Class.hasMany(ClassSchedule, { foreignKey: 'class_id', as: 'schedules' });
@@ -51,13 +56,16 @@ app.get('/api/courses', async (req, res) => {
 sequelize.sync({ force: false }) // force: true면 켤 때마다 다 지우고 다시 만듦 (주의!)
   .then(() => {
     console.log('데이터베이스 연결 및 테이블 생성 완료!');
-   
+    app.listen(PORT, () => {
+      console.log(`서버 실행 중! PORT: ${PORT}`);
+    });
   })
   .catch((err) => {
     console.error('DB 연결 실패:', err);
   });
 
-const PORT = process.env.PORT || 3000;
+  // ✅ 포트 8000으로 고정 (환경변수에 PORT가 있어도 8000 쓰고 싶으면 그냥 8000 상수로)
+const PORT = 8000;
 
 app.listen(PORT, () => {
   console.log(`서버 실행 중: ${PORT}`);
