@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Sparkles, Briefcase, Heart, TrendingUp } from 'lucide-react';
 import { User, Course } from '../App';
-import { mockCourses } from '../data/mockData';
 
 type AIRecommendationProps = {
+  courses: Course[];
   user: User;
   onToggleInterest: (courseId: string) => void;
   interestedCourses: string[];
@@ -64,7 +64,7 @@ const courseRecommendations: Record<string, string[]> = {
   product: ['CS301', 'MGT302', 'PSY301', 'MGT303'],
 };
 
-export function AIRecommendation({ user, onToggleInterest, interestedCourses }: AIRecommendationProps) {
+export function AIRecommendation({ courses, user, onToggleInterest, interestedCourses }: AIRecommendationProps) {
   const [selectedField, setSelectedField] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
@@ -83,7 +83,10 @@ export function AIRecommendation({ user, onToggleInterest, interestedCourses }: 
     if (!selectedField) return [];
     
     const recommendedCodes = courseRecommendations[selectedField] || [];
-    return mockCourses.filter(course => recommendedCodes.includes(course.code));
+    return courses.filter(course => {
+      const courseCode = course.code ?? String(course.id);
+      return recommendedCodes.includes(courseCode);
+    });
   };
 
   const recommendedCourses = getRecommendedCourses();
@@ -172,7 +175,7 @@ export function AIRecommendation({ user, onToggleInterest, interestedCourses }: 
                         </span>
                         <h4 className="text-gray-900">{course.name}</h4>
                         <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
-                          {course.code}
+                          {course.code || course.id}
                         </span>
                       </div>
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LoginPage } from './components/LoginPage';
 import { HomePage } from './components/HomePage';
 import { TimetableGenerator } from './components/TimetableGenerator';
@@ -6,18 +6,28 @@ import { CourseList } from './components/CourseList';
 import { AIRecommendation } from './components/AIRecommendation';
 import { MyPage } from './components/MyPage';
 
+export type ClassSchedule = {
+  class_id: string;
+  weekday: number;
+  start_time: string;
+  end_time: string | null;
+  duration_minutes: number | null;
+  location: string | null;
+};
+
 export type Course = {
   id: string;
   code: string;
   name: string;
   professor: string;
   credits: number;
-  time: string;
-  day: string[];
   capacity: number;
   enrolled: number;
   department: string;
-  courseType: '전공 필수' | '전공 선택' | '교양';
+  courseType: '전공필수' | '전공선택' | '교양';
+  day: string[];
+  time: string;
+  schedules: ClassSchedule[];
 };
 
 export type Timetable = {
@@ -40,8 +50,89 @@ export type Page = 'login' | 'home' | 'timetable' | 'courses' | 'ai' | 'mypage';
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('login');
   const [user, setUser] = useState<User | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [savedTimetables, setSavedTimetables] = useState<Timetable[]>([]);
   const [interestedCourses, setInterestedCourses] = useState<string[]>([]);
+
+  const normalizeCourses = (data: any[]): Course[] => {
+    const weekdayMap = ['일', '월', '화', '수', '목', '금', '토'];
+
+    return data.map((course) => {
+      const rawId = course.id ?? course.code ?? '';
+      const normalizedSchedules: ClassSchedule[] = Array.isArray(course.schedules)
+        ? course.schedules.map((schedule: any) => ({
+            class_id: String(schedule.class_id ?? rawId),
+            weekday: schedule.weekday ?? 0,
+            start_time: schedule.start_time ?? '',
+            end_time: schedule.end_time ?? null,
+            duration_minutes: schedule.duration_minutes ?? null,
+            location: schedule.location ?? null,
+          }))
+        : [];
+
+      const day = Array.from(
+        new Set(
+          normalizedSchedules
+            .map((schedule) => weekdayMap[schedule.weekday])
+            .filter(Boolean)
+        )
+      );
+
+      const time =
+        normalizedSchedules.length > 0
+          ? normalizedSchedules
+              .map((schedule) => {
+                const start = schedule.start_time?.slice(0, 5) ?? '';
+                const end = schedule.end_time?.slice(0, 5) ?? '';
+                return end ? `${start}~${end}` : start;
+              })
+              .join(', ')
+          : '시간 정보 없음';
+
+      const normalizedCourseType = (course.courseType ?? '').replace(/\s+/g, '');
+      const courseType: Course['courseType'] =
+        normalizedCourseType === '전공필수'
+          ? '전공필수'
+          : normalizedCourseType === '전공선택'
+          ? '전공선택'
+          : '교양';
+
+      return {
+        ...course,
+        id: String(rawId),
+        code: course.code ?? String(rawId),
+        courseType,
+        day,
+        time,
+        schedules: normalizedSchedules,
+      };
+    });
+  };
+
+  // API에서 수업 데이터 로드
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetch('http://localhost:3000/api/courses');
+        if (!response.ok) {
+          throw new Error('수업 데이터를 불러올 수 없습니다');
+        }
+        const data = await response.json();
+        setCourses(normalizeCourses(data));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다');
+        console.error('수업 데이터 로드 오류:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCourses();
+  }, []);
 
   const handleLogin = (userData: User) => {
     setUser(userData);
@@ -142,31 +233,45 @@ export default function App() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {currentPage === 'home' && (
+        {loading && (
+          <div className="text-center py-12">
+            <p className="text-gray-600">데이터를 불러오는 중입니다...</p>
+          </div>
+        )}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <p className="text-red-700">오류: {error}</p>
+          </div>
+        )}
+        {currentPage === 'home' && !loading && (
           <HomePage onNavigate={setCurrentPage} user={user!} />
         )}
-        {currentPage === 'timetable' && (
+        {currentPage === 'timetable' && !loading && (
           <TimetableGenerator 
+            courses={courses}
             onSave={handleSaveTimetable}
             interestedCourses={interestedCourses}
           />
         )}
-        {currentPage === 'courses' && (
+        {currentPage === 'courses' && !loading && (
           <CourseList 
+            courses={courses}
             interestedCourses={interestedCourses}
             onToggleInterest={handleToggleInterest}
           />
         )}
-        {currentPage === 'ai' && (
+        {currentPage === 'ai' && !loading && (
           <AIRecommendation 
+            courses={courses}
             user={user!}
             onToggleInterest={handleToggleInterest}
             interestedCourses={interestedCourses}
           />
         )}
-        {currentPage === 'mypage' && (
+        {currentPage === 'mypage' && !loading && (
           <MyPage 
             user={user!}
+            courses={courses}
             savedTimetables={savedTimetables}
             interestedCourses={interestedCourses}
           />

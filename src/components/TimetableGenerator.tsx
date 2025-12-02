@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { Timetable, Course } from '../App';
 import { TimetableView } from './TimetableView';
 import { Loader2, Save, RefreshCw, Plus, X, Search } from 'lucide-react';
-import { mockCourses } from '../data/mockData';
 
 type TimetableGeneratorProps = {
+  courses: Course[];
   onSave: (timetable: Timetable) => void;
   interestedCourses: string[];
 };
@@ -18,7 +18,7 @@ type TimetableConditions = {
   preferLongBreak: boolean;
 };
 
-export function TimetableGenerator({ onSave, interestedCourses }: TimetableGeneratorProps) {
+export function TimetableGenerator({ courses, onSave, interestedCourses }: TimetableGeneratorProps) {
   const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCourseType, setSelectedCourseType] = useState('전체');
@@ -36,13 +36,15 @@ export function TimetableGenerator({ onSave, interestedCourses }: TimetableGener
   const [selectedPlan, setSelectedPlan] = useState<'A' | 'B' | 'C'>('A');
 
   const days = ['월', '화', '수', '목', '금'];
-  const courseTypes = ['전체', '전공 필수', '전공 선택', '교양'];
+  const courseTypes = ['전체', '전공필수', '전공선택', '교양'];
 
-  const filteredCourses = mockCourses.filter(course => {
+  const filteredCourses = courses.filter(course => {
+    const searchLower = searchTerm.toLowerCase();
+    const courseCode = (course.code ?? course.id ?? '').toString().toLowerCase();
     const matchesSearch = 
-      course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      course.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      course.professor.toLowerCase().includes(searchTerm.toLowerCase());
+      course.name.toLowerCase().includes(searchLower) ||
+      courseCode.includes(searchLower) ||
+      course.professor.toLowerCase().includes(searchLower);
     
     const matchesCourseType = 
       selectedCourseType === '전체' || course.courseType === selectedCourseType;
@@ -58,7 +60,7 @@ export function TimetableGenerator({ onSave, interestedCourses }: TimetableGener
     }
   };
 
-  const selectedCourseDetails = mockCourses.filter(c => selectedCourses.includes(c.id));
+  const selectedCourseDetails = courses.filter(c => selectedCourses.includes(String(c.id)));
   const totalSelectedCredits = selectedCourseDetails.reduce((sum, c) => sum + c.credits, 0);
 
   const generateTimetables = () => {
@@ -82,14 +84,23 @@ export function TimetableGenerator({ onSave, interestedCourses }: TimetableGener
 
   const createOptimizedTimetable = (name: string, seed: number): Timetable => {
     // Start with selected courses as base
-    const baseCourses = mockCourses.filter(c => selectedCourses.includes(c.id));
+    const baseCourses = courses.filter(c => selectedCourses.includes(String(c.id)));
     
     // Check for conflicts in selected courses
     const validBaseCourses: Course[] = [];
     for (const course of baseCourses) {
-      const hasConflict = validBaseCourses.some(s => 
-        s.day.some(d => course.day.includes(d)) && s.time === course.time
-      );
+      const hasConflict = validBaseCourses.some(s => {
+        // Check if same weekday and overlapping time
+        const sSchedules = s.schedules || [];
+        const cSchedules = course.schedules || [];
+        return sSchedules.some(ss => 
+          cSchedules.some(cs => 
+            ss.weekday === cs.weekday && 
+            ss.start_time < cs.end_time && 
+            ss.end_time > cs.start_time
+          )
+        );
+      });
       
       if (!hasConflict) {
         validBaseCourses.push(course);
@@ -99,28 +110,40 @@ export function TimetableGenerator({ onSave, interestedCourses }: TimetableGener
     let currentCredits = validBaseCourses.reduce((sum, c) => sum + c.credits, 0);
     
     // Get additional courses to fill the timetable
-    let availableAdditionalCourses = mockCourses.filter(c => 
-      !selectedCourses.includes(c.id)
+    let availableAdditionalCourses = courses.filter(c => 
+      !selectedCourses.includes(String(c.id))
     );
     
     // Filter by time preferences
     if (conditions.avoidMorning) {
-      availableAdditionalCourses = availableAdditionalCourses.filter(c => 
-        !c.time.startsWith('09') && !c.time.startsWith('10')
-      );
+      availableAdditionalCourses = availableAdditionalCourses.filter(c => {
+        const schedules = c.schedules || [];
+        return !schedules.some(s => {
+          const hour = parseInt(s.start_time.split(':')[0]);
+          return hour < 11;
+        });
+      });
     }
     
     if (conditions.avoidEvening) {
-      availableAdditionalCourses = availableAdditionalCourses.filter(c => 
-        !c.time.startsWith('18') && !c.time.startsWith('19')
-      );
+      availableAdditionalCourses = availableAdditionalCourses.filter(c => {
+        const schedules = c.schedules || [];
+        return !schedules.some(s => {
+          const hour = parseInt(s.start_time.split(':')[0]);
+          return hour >= 18;
+        });
+      });
     }
 
     // Filter by preferred days if any
     if (conditions.preferredDays.length > 0) {
-      availableAdditionalCourses = availableAdditionalCourses.filter(c =>
-        c.day.some(d => conditions.preferredDays.includes(d))
-      );
+      const dayMap = { '월': 1, '화': 2, '수': 3, '목': 4, '금': 5 };
+      availableAdditionalCourses = availableAdditionalCourses.filter(c => {
+        const schedules = c.schedules || [];
+        return schedules.some(s => 
+          conditions.preferredDays.some(pd => dayMap[pd as keyof typeof dayMap] === s.weekday)
+        );
+      });
     }
     
     // Shuffle for variation between plans
@@ -134,9 +157,17 @@ export function TimetableGenerator({ onSave, interestedCourses }: TimetableGener
     for (const course of shuffled) {
       if (currentCredits >= conditions.maxCredits) break;
       
-      const hasConflict = finalCourses.some(s => 
-        s.day.some(d => course.day.includes(d)) && s.time === course.time
-      );
+      const hasConflict = finalCourses.some(s => {
+        const sSchedules = s.schedules || [];
+        const cSchedules = course.schedules || [];
+        return sSchedules.some(ss => 
+          cSchedules.some(cs => 
+            ss.weekday === cs.weekday && 
+            ss.start_time < cs.end_time && 
+            ss.end_time > cs.start_time
+          )
+        );
+      });
       
       if (!hasConflict && currentCredits + course.credits <= conditions.maxCredits) {
         finalCourses.push(course);
@@ -262,7 +293,7 @@ export function TimetableGenerator({ onSave, interestedCourses }: TimetableGener
                       <div className="flex items-center space-x-2 mb-1">
                         <h4 className="text-gray-900">{course.name}</h4>
                         <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
-                          {course.code}
+                          {course.code || course.id}
                         </span>
                       </div>
                       <div className="text-sm text-gray-600 space-x-4">

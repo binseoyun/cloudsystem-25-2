@@ -1,25 +1,61 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Search, Heart, AlertCircle, Users } from 'lucide-react';
-import { mockCourses } from '../data/mockData';
+import { Course } from '../App';
 
 type CourseListProps = {
+  courses: Course[];
   interestedCourses: string[];
   onToggleInterest: (courseId: string) => void;
 };
 
-export function CourseList({ interestedCourses, onToggleInterest }: CourseListProps) {
+export function CourseList({ courses, interestedCourses, onToggleInterest }: CourseListProps) {
+  const [courseData, setCourseData] = useState<Course[]>(courses);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCourseType, setSelectedCourseType] = useState('전체');
   const [sortBy, setSortBy] = useState<'name' | 'credits' | 'enrollment'>('name');
 
-  const courseTypes = ['전체', '전공 필수', '전공 선택', '교양'];
+  useEffect(() => {
+    const needsFetch = !courses || courses.length === 0;
+    if (!needsFetch) {
+      setCourseData(courses);
+      setLoading(false);
+      setError(null);
+      return;
+    }
 
-  const filteredCourses = mockCourses
+    const fetchCourses = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await fetch('http://localhost:3000/api/courses');
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        setCourseData(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '서버 응답이 없습니다.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCourses();
+  }, [courses]);
+
+  const courseTypes = ['전체', '전공필수', '전공선택', '교양'];
+
+  const searchTermLower = searchTerm.toLowerCase();
+
+  const filteredCourses = courseData
     .filter(course => {
+      const courseCode = (course.code ?? course.id ?? '').toString();
       const matchesSearch = 
-        course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        course.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        course.professor.toLowerCase().includes(searchTerm.toLowerCase());
+        course.name.toLowerCase().includes(searchTermLower) ||
+        courseCode.toLowerCase().includes(searchTermLower) ||
+        course.professor.toLowerCase().includes(searchTermLower);
       
       const matchesCourseType = 
         selectedCourseType === '전체' || course.courseType === selectedCourseType;
@@ -41,8 +77,24 @@ export function CourseList({ interestedCourses, onToggleInterest }: CourseListPr
     return { text: '여유', color: 'text-green-600', bg: 'bg-green-50' };
   };
 
+  const formatSchedule = (schedules: Course['schedules']) => {
+    if (!schedules || schedules.length === 0) return '시간 정보 없음';
+    const weekday = ['일', '월', '화', '수', '목', '금', '토'];
+    return schedules
+      .map((s) => `${weekday[s.weekday] ?? s.weekday} ${s.start_time}${s.end_time ? `~${s.end_time}` : ''}`)
+      .join(', ');
+  };
+
   return (
     <div className="space-y-6">
+      {loading && (
+        <div className="text-center text-gray-600">수업 정보를 불러오는 중입니다...</div>
+      )}
+      {error && (
+        <div className="bg-red-50 text-red-700 border border-red-200 rounded px-4 py-3">
+          수업 목록을 가져오지 못했습니다: {error}
+        </div>
+      )}
       <div>
         <h2 className="text-gray-900 mb-2">수업 목록</h2>
         <p className="text-gray-600">수강 희망 과목을 등록하고 정원 현황을 확인하세요</p>
@@ -98,7 +150,8 @@ export function CourseList({ interestedCourses, onToggleInterest }: CourseListPr
       <div className="space-y-3">
         {filteredCourses.map(course => {
           const status = getEnrollmentStatus(course.enrolled, course.capacity);
-          const isInterested = interestedCourses.includes(course.id);
+          const courseKey = String(course.id);
+          const isInterested = interestedCourses.includes(courseKey);
           
           return (
             <div
@@ -110,11 +163,11 @@ export function CourseList({ interestedCourses, onToggleInterest }: CourseListPr
                   <div className="flex items-center space-x-3 mb-2">
                     <h4 className="text-gray-900">{course.name}</h4>
                     <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
-                      {course.code}
+                      {course.code || course.id}
                     </span>
                     <span className={`px-2 py-1 ${
-                      course.courseType === '전공 필수' ? 'bg-purple-100 text-purple-700' :
-                      course.courseType === '전공 선택' ? 'bg-blue-100 text-blue-700' :
+                      course.courseType === '전공필수' ? 'bg-purple-100 text-purple-700' :
+                      course.courseType === '전공선택' ? 'bg-blue-100 text-blue-700' :
                       'bg-green-100 text-green-700'
                     } rounded text-xs`}>
                       {course.courseType}
@@ -133,7 +186,7 @@ export function CourseList({ interestedCourses, onToggleInterest }: CourseListPr
                       <span className="text-gray-500">학점:</span> {course.credits}학점
                     </div>
                     <div>
-                      <span className="text-gray-500">시간:</span> {course.day.join(', ')} {course.time}
+                      <span className="text-gray-500">시간:</span> {formatSchedule(course.schedules)}
                     </div>
                     <div>
                       <span className="text-gray-500">학과:</span> {course.department}
@@ -163,7 +216,7 @@ export function CourseList({ interestedCourses, onToggleInterest }: CourseListPr
                 </div>
 
                 <button
-                  onClick={() => onToggleInterest(course.id)}
+                  onClick={() => onToggleInterest(courseKey)}
                   className={`ml-4 p-3 rounded-lg transition-colors ${
                     isInterested
                       ? 'bg-red-50 text-red-600 hover:bg-red-100'

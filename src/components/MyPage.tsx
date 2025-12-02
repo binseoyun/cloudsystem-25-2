@@ -1,20 +1,20 @@
-import { User, Timetable } from '../App';
+import { User, Timetable, Course } from '../App';
 import { TimetableView } from './TimetableView';
 import { useState } from 'react';
 import { User as UserIcon, Calendar, Heart, Clock, Mail, BookOpen } from 'lucide-react';
-import { mockCourses } from '../data/mockData';
 
 type MyPageProps = {
   user: User;
+  courses: Course[];
   savedTimetables: Timetable[];
   interestedCourses: string[];
 };
 
-export function MyPage({ user, savedTimetables, interestedCourses }: MyPageProps) {
+export function MyPage({ user, courses, savedTimetables, interestedCourses }: MyPageProps) {
   const [selectedTimetable, setSelectedTimetable] = useState<Timetable | null>(null);
 
-  const interestedCourseDetails = mockCourses.filter(c => 
-    interestedCourses.includes(c.id)
+  const interestedCourseDetails = courses.filter(c => 
+    interestedCourses.includes(String(c.id))
   );
 
   const totalCredits = savedTimetables[0]?.courses.reduce((sum, c) => sum + c.credits, 0) || 0;
