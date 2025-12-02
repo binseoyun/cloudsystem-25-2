@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Sparkles, Briefcase, Heart, TrendingUp } from 'lucide-react';
+import { Sparkles, Briefcase, Heart, TrendingUp, AlertCircle } from 'lucide-react';
 import { User, Course } from '../App';
-import { mockCourses } from '../data/mockData';
 
 type AIRecommendationProps = {
   user: User;
@@ -30,24 +29,6 @@ const jobFields: JobField[] = [
     icon: '📊',
   },
   {
-    id: 'public',
-    name: '공공행정',
-    description: '정책 분석, 행정 관리, 공공서비스',
-    icon: '🏛️',
-  },
-  {
-    id: 'marketing',
-    name: '마케팅',
-    description: '디지털 마케팅, 브랜드 전략, 소비자 분석',
-    icon: '📈',
-  },
-  {
-    id: 'finance',
-    name: '금융',
-    description: '재무 분석, 투자 관리, 리스크 관리',
-    icon: '💰',
-  },
-  {
     id: 'product',
     name: '프로덕트 매니저',
     description: '제품 기획, 프로젝트 관리, UX 설계',
@@ -55,38 +36,61 @@ const jobFields: JobField[] = [
   },
 ];
 
-const courseRecommendations: Record<string, string[]> = {
-  backend: ['CS301', 'CS302', 'CS303', 'CS304'],
-  data: ['CS303', 'STAT301', 'STAT302', 'CS305'],
-  public: ['ECON301', 'PSY301', 'MGT301', 'ECON302'],
-  marketing: ['MGT302', 'PSY301', 'STAT301', 'MGT303'],
-  finance: ['ECON301', 'ECON302', 'STAT301', 'MGT301'],
-  product: ['CS301', 'MGT302', 'PSY301', 'MGT303'],
-};
+//백엔드 API를 8000로 호출(연결이 안되서 ai-server와 연결)
+
+const API_BASE_URL='http://localhost:5000/api/ai'
 
 export function AIRecommendation({ user, onToggleInterest, interestedCourses }: AIRecommendationProps) {
   const [selectedField, setSelectedField] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  
+  // ★ 가짜 데이터 대신, 서버에서 받아온 진짜 추천 목록을 저장할 State
+  const [recommendedCourses, setRecommendedCourses] = useState<Course[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleFieldSelect = (fieldId: string) => {
+  const handleFieldSelect = async (fieldId: string) => {
     setIsAnalyzing(true);
-    setSelectedField(null);
-    
-    // Simulate AI analysis
-    setTimeout(() => {
-      setSelectedField(fieldId);
+    setSelectedField(null); // 분석 중에는 선택 해제 느낌 주기
+    setError(null);
+    setRecommendedCourses([]); // 기존 결과 초기화
+
+    // 선택한 직무의 한글 이름 찾기 (예: 'backend' -> '백엔드 개발')
+    const selectedJob = jobFields.find(f => f.id === fieldId);
+
+    if (!selectedJob) return;
+
+    try {
+      // 1. 백엔드(Node.js)에게 추천 요청 보내기
+      // Node.js는 이걸 받아서 Python AI 서버에게 물어보고 결과를 줄 것입니다.
+      const response = await fetch(API_BASE_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jobInterest: selectedJob.name, // "백엔드 개발"
+          major: user.department         // "컴퓨터공학과" (유저 전공 정보 활용)
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('AI 서버와 통신에 실패했습니다.');
+      }
+
+      // 2. 받아온 추천 과목 리스트 저장
+      const data: Course[] = await response.json();
+      setRecommendedCourses(data);
+      setSelectedField(fieldId); // 선택 상태 확정
+
+    } catch (err) {
+      console.error(err);
+      setError('AI 추천을 불러오지 못했습니다. 백엔드 및 AI 서버(Python)가 켜져 있는지 확인해주세요.');
+      setSelectedField(null);
+    } finally {
       setIsAnalyzing(false);
-    }, 1000);
+    }
   };
 
-  const getRecommendedCourses = (): Course[] => {
-    if (!selectedField) return [];
-    
-    const recommendedCodes = courseRecommendations[selectedField] || [];
-    return mockCourses.filter(course => recommendedCodes.includes(course.code));
-  };
-
-  const recommendedCourses = getRecommendedCourses();
   const selectedFieldData = jobFields.find(f => f.id === selectedField);
 
   return (
@@ -130,6 +134,14 @@ export function AIRecommendation({ user, onToggleInterest, interestedCourses }: 
             </button>
           ))}
         </div>
+        
+        {/* 에러 메시지 표시 */}
+        {error && (
+          <div className="mt-4 p-4 bg-red-50 text-red-600 rounded-lg flex items-center gap-2">
+            <AlertCircle className="w-5 h-5" />
+            <p>{error}</p>
+          </div>
+        )}
       </div>
 
       {/* Analyzing State */}
@@ -137,12 +149,12 @@ export function AIRecommendation({ user, onToggleInterest, interestedCourses }: 
         <div className="bg-white rounded-lg shadow-md p-12 text-center">
           <Sparkles className="w-12 h-12 text-purple-600 mx-auto mb-4 animate-pulse" />
           <h3 className="text-gray-900 mb-2">AI 분석 중...</h3>
-          <p className="text-gray-600">최적의 과목을 찾고 있습니다</p>
+          <p className="text-gray-600">학생님의 성향과 커리큘럼을 분석하고 있습니다</p>
         </div>
       )}
 
       {/* Recommended Courses */}
-      {selectedField && !isAnalyzing && (
+      {selectedField && !isAnalyzing && !error && (
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center space-x-3 mb-6">
             <Briefcase className="w-6 h-6 text-purple-600" />
@@ -157,7 +169,8 @@ export function AIRecommendation({ user, onToggleInterest, interestedCourses }: 
           <div className="space-y-4">
             {recommendedCourses.map((course, index) => {
               const isInterested = interestedCourses.includes(course.id);
-              const matchScore = 95 - (index * 5);
+              // AI 추천 순위대로 점수 부여 (단순 시각적 효과)
+              const matchScore = Math.max(70, 98 - (index * 3)); 
 
               return (
                 <div
@@ -167,16 +180,16 @@ export function AIRecommendation({ user, onToggleInterest, interestedCourses }: 
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
-                        <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded">
-                          추천도 {matchScore}%
+                        <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded font-semibold text-sm">
+                          AI 추천도 {matchScore}%
                         </span>
-                        <h4 className="text-gray-900">{course.name}</h4>
+                        <h4 className="text-gray-900 font-bold">{course.name}</h4>
                         <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
                           {course.code}
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-gray-600 mb-3">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-gray-600 mb-3 text-sm">
                         <div>
                           <span className="text-gray-500">교수:</span> {course.professor}
                         </div>
@@ -191,13 +204,12 @@ export function AIRecommendation({ user, onToggleInterest, interestedCourses }: 
                         </div>
                       </div>
 
-                      <div className="flex items-center space-x-2 text-purple-600">
+                      <div className="flex items-center space-x-2 text-purple-600 text-sm">
                         <TrendingUp className="w-4 h-4" />
                         <span>
-                          {index === 0 && '필수 추천 과목입니다'}
-                          {index === 1 && '기초를 다지기 좋은 과목입니다'}
-                          {index === 2 && '실무 역량 향상에 도움이 됩니다'}
-                          {index >= 3 && '심화 학습에 추천합니다'}
+                          {index === 0 && '가장 강력하게 추천하는 과목입니다!'}
+                          {index === 1 && '직무 역량 강화에 필수적입니다.'}
+                          {index >= 2 && '함께 수강하면 시너지가 나는 과목입니다.'}
                         </span>
                       </div>
                     </div>
@@ -221,9 +233,12 @@ export function AIRecommendation({ user, onToggleInterest, interestedCourses }: 
           </div>
 
           {recommendedCourses.length === 0 && (
-            <p className="text-center text-gray-500 py-8">
-              추천할 수 있는 과목이 없습니다.
-            </p>
+            <div className="text-center py-10 bg-gray-50 rounded-lg">
+              <p className="text-gray-500">
+                조건에 맞는 추천 과목을 찾지 못했습니다.<br/>
+                DB에 과목 데이터가 충분한지 확인해주세요.
+              </p>
+            </div>
           )}
         </div>
       )}
@@ -231,11 +246,11 @@ export function AIRecommendation({ user, onToggleInterest, interestedCourses }: 
       {/* Tips */}
       {!selectedField && !isAnalyzing && (
         <div className="bg-blue-50 border-l-4 border-blue-400 p-6 rounded">
-          <h4 className="text-blue-800 mb-2">💡 추천 받는 방법</h4>
-          <ul className="text-blue-700 space-y-1">
-            <li>• 위에서 관심있는 직무 분야를 선택해주세요</li>
-            <li>• AI가 해당 직무에 필요한 역량을 분석합니다</li>
-            <li>• 추천받은 과목을 시간표 생성에 활용해보세요</li>
+          <h4 className="text-blue-800 mb-2 font-bold">💡 실시간 AI 추천 받는 방법</h4>
+          <ul className="text-blue-700 space-y-1 text-sm">
+            <li>• 위에서 관심있는 직무 분야를 선택해주세요.</li>
+            <li>• OpenAI(ChatGPT)가 학생님의 전공과 직무를 분석합니다.</li>
+            <li>• 학교 데이터베이스에 있는 실제 강의 중 최적의 과목을 찾아냅니다.</li>
           </ul>
         </div>
       )}

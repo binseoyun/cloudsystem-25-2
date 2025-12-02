@@ -10,6 +10,12 @@ require('dotenv').config();
 
 const app = express();
 
+  //ai 관련
+const aiRoutes=require('./routes/aiRoutes')
+app.use('/api/ai',aiRoutes);
+
+
+
 // CORS 설정 (프론트 주소)
 app.use(cors({
   origin: 'http://localhost:3000',
