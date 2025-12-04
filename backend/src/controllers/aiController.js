@@ -1,15 +1,18 @@
 const axios = require('axios');
+const Class = require('../models/Class'); // 실제 수업 모델 불러오기
 
 const AI_SERVER_URL = process.env.AI_SERVER_URL || 'http://localhost:5000';
 
 exports.getRecommendation = async (req, res) => {
     try {
         const { jobInterest, major } = req.body;
-/*
-DB조회 코드 삭제(python이 mock_db 가지고 있어서)
+
+
         // 1. DB에서 전체 강의 목록 가져오기 (AI가 고를 후보군)
-        const allCourses = await Course.findAll(); 
-        
+        const allCourses = await Course.findAll({
+            attributes: ['code', 'name', 'professor', 'time', 'day', 'department', 'description']
+        }); 
+        /*
         // 데이터 정제 (필요한 정보만 추림)
         const courseData = allCourses.map(c => ({
             code: c.code,
@@ -22,7 +25,7 @@ DB조회 코드 삭제(python이 mock_db 가지고 있어서)
         const response = await axios.post(`${AI_SERVER_URL}/recommend`, {
             major,
             job_interest: jobInterest,
-            //courses: courseData
+            courses: allCourses //DB 데이터 통째로 전달
         });
 
         // 3. AI가 추천한 과목 코드(['CS101', 'CS202'])를 받음

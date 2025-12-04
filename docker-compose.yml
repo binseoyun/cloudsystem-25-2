@@ -65,7 +65,7 @@ services:
   frontend:
     build:
       context: ./frontend/Course Registration Platform
-      dockerfile: ../../Dockerfile.frontend
+      dockerfile: Dockerfile
     depends_on:
       - backend
     ports:

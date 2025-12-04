@@ -13,7 +13,7 @@ import google.generativeai as genai
 import os
 from dotenv import load_dotenv
 
-from mock_db import get_all_courses
+#from mock_db import get_all_courses
 from scheduler import generate_schedule
 
 #.env 파일 로드
@@ -94,13 +94,14 @@ def create_schedule_endpoint(request: ScheduleRequest):
 class RecommendationRequest(BaseModel):
     major: str | None= None #학생 전공없어도 에러 안남(컴퓨터과학과 학생을 위한 서비스이니)
     job_interest: str #희망 직무
-    #courses: list #DB에 있는 전체 강의 목록
+    courses: list[Dict[str, Any]] #DB에 있는 전체 강의 목록
 
 @app.post("/recommend")
 def recommand_courses(req: RecommendationRequest):
     try:
         # 1. mock_db.py에서 강의 데이터 직접 로딩
-        all_courses = get_all_courses()
+        #all_courses = get_all_courses()
+        all_courses = req.courses
 
        # 2. AI에게 보낼 텍스트로 변환
         courses_text = "\n".join([

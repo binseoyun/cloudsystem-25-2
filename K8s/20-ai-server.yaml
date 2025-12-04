@@ -38,6 +38,11 @@ spec:
             secretKeyRef:
               name: app-secrets
               key: gemini-api-key
+        - name: BACKEND_BASE_URL
+          value: "http://backend-service:8000"
+        - name: COURSE_API_URL          # ★ 새로 추가
+          value: "http://backend-service:8000/api/courses"
+              
         # ConfigMap 마운트 (필요 시)
         volumeMounts:
         - name: config-volume

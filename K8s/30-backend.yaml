@@ -56,3 +56,6 @@ spec:
         # AI 서버 연결 정보 (서비스 이름으로 호출)
         - name: AI_SERVER_URL
           value: "http://ai-server-service:5000"
+        # ★★★ [여기 추가] 이게 있어야 로그인이 됩니다! ★★★
+        - name: JWT_SECRET
+          value: "mySuperSecretKey1234!"

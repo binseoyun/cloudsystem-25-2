@@ -6,4 +6,5 @@ database/
 backend/
 frontend/
 docker-compose.yml
+.env
 
