@@ -25,13 +25,14 @@ exports.register = async (req, res) => {
         });
         // 3. 회원가입 성공 시 바로 토큰 발급! 
         const token = jwt.sign({ id: newUser.id }, process.env.JWT_SECRET || 'secret', { expiresIn: '1h' });
-        res.status(201).json({ message: '회원가입이 완료되었습니다.',
+        res.status(201).json({
+            message: '회원가입이 완료되었습니다.',
             token,
             user: {
-                name:newUser.name,
-                studentId:newUser.studentId,
-                major:newUser.major
-            }
+                name: newUser.name,
+                studentId: newUser.studentId,
+                department: newUser.major,
+            },
         });
     } catch (error){
         console.error('회원가입 오류:', error);
@@ -60,11 +61,15 @@ exports.login = async (req, res) => {
            //유저 DB ID인 user.id를 토큰에 담아줌
           const token = jwt.sign({ id:user.id}, process.env.JWT_SECRET, { expiresIn: '1h'});
               
-              res.status(200).json({ 
-                    message: '로그인 성공',
-                    token,
-                user:{name: user.name, studentId: user.studentId}
-             });
+              res.status(200).json({
+                message: '로그인 성공',
+                token,
+                user: {
+                  name: user.name,
+                  studentId: user.studentId,
+                  department: user.major,
+                },
+              });
         } catch (error){
             console.error('로그인 오류:', error);
             res.status(500).json({ message: '서버 오류가 발생했습니다.'});

@@ -107,7 +107,7 @@ export function AIRecommendation({ user, onToggleInterest, interestedCourses }: 
           <h3>AI 맞춤 추천</h3>
         </div>
         <p className="text-purple-100">
-          {user.name}님의 전공({user.department})과 희망 직무를 고려하여 최적의 과목을 추천합니다.
+          {user.name}님의 전공({user.major})과 희망 직무를 고려하여 최적의 과목을 추천합니다.
         </p>
       </div>
 
