@@ -27,9 +27,8 @@ spec:
     spec:
       containers:
       - name: ai-server
-        # ★ 우리가 만든 이미지 이름 사용
-        image: my-ai-server:v1
-        imagePullPolicy: Never
+        image: jaeee25/ai-server:v1 # ✅ 수정 완료: Docker Hub 경로 반영
+        imagePullPolicy: Always # ✅ K8s가 Docker Hub에서 이미지를 가져오도록 Always로 변경
         ports:
         - containerPort: 5000
         env:
@@ -40,9 +39,9 @@ spec:
               key: gemini-api-key
         - name: BACKEND_BASE_URL
           value: "http://backend-service:8000"
-        - name: COURSE_API_URL          # ★ 새로 추가
+        - name: COURSE_API_URL 
           value: "http://backend-service:8000/api/courses"
-              
+            
         # ConfigMap 마운트 (필요 시)
         volumeMounts:
         - name: config-volume
